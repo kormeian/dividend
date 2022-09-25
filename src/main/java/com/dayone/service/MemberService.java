@@ -6,7 +6,6 @@ import com.dayone.persist.MemberRepository;
 import com.dayone.persist.entity.MemberEntity;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.cfg.NotYetImplementedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,8 +17,8 @@ import org.springframework.stereotype.Service;
 @AllArgsConstructor
 public class MemberService implements UserDetailsService {
 
-	private final PasswordEncoder passwordEncoder;
 	private final MemberRepository memberRepository;
+	private final PasswordEncoder passwordEncoder;
 
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -28,14 +27,25 @@ public class MemberService implements UserDetailsService {
 	}
 
 	public MemberEntity register(Auth.SignUp member) {
-		boolean exists = false;
+		boolean exists = this.memberRepository.existsByUsername(member.getUsername());
 		if (exists) {
 			throw new AlreadyExistUserException();
 		}
-		throw new NotYetImplementedException();
+
+		member.setPassword(this.passwordEncoder.encode(member.getPassword()));
+
+		return this.memberRepository.save(member.toEntity());
 	}
 
 	public MemberEntity authenticate(Auth.SignIn member) {
-		throw new NotYetImplementedException();
+
+		var user = this.memberRepository.findByUsername(member.getUsername())
+			.orElseThrow(() -> new RuntimeException("존재하지 않는 ID 입니다"));
+
+		if (!this.passwordEncoder.matches(member.getPassword(), user.getPassword())) {
+			throw new RuntimeException("비밀번호가 일치하지 않습니다");
+		}
+
+		return user;
 	}
 }
